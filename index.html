@@ -1,0 +1,351 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kart Bulma Oyunu</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #171738, #343477);
+    color: white;
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 8px;
+}
+
+.aciklama {
+    color: #d8d8ff;
+    margin-bottom: 20px;
+}
+
+.istatistikler {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+.kutu {
+    background: #ffffff18;
+    border: 1px solid #ffffff35;
+    border-radius: 12px;
+    padding: 12px 20px;
+    min-width: 105px;
+}
+
+.kutu strong {
+    display: block;
+    font-size: 24px;
+    margin-top: 5px;
+    color: #ffe66d;
+}
+
+button {
+    font-family: inherit;
+}
+
+.yenile {
+    border: none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    margin-bottom: 22px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    background: #ffe66d;
+    color: #222244;
+}
+
+.yenile:hover {
+    background: #fff19e;
+}
+
+.oyun-alani {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 8px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.kart {
+    aspect-ratio: 3 / 4;
+    min-width: 0;
+    border: none;
+    border-radius: 10px;
+    background: #6868c9;
+    color: white;
+    font-size: clamp(18px, 3vw, 36px);
+    cursor: pointer;
+    box-shadow: 0 4px 0 #29295d;
+    transition: transform 0.2s, background 0.2s;
+    overflow: hidden;
+}
+
+.kart:hover:not(:disabled) {
+    transform: translateY(-3px);
+    background: #8585ed;
+}
+
+.kart.acik {
+    background: white;
+    color: #25254c;
+    cursor: default;
+}
+
+.kart.eslesti {
+    background: #5cdb95;
+    color: #143d2a;
+    cursor: default;
+}
+
+#mesaj {
+    min-height: 28px;
+    margin: 22px 0;
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffe66d;
+}
+
+@media (max-width: 700px) {
+    body {
+        padding: 12px;
+    }
+
+    .oyun-alani {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 7px;
+    }
+
+    .kart {
+        border-radius: 7px;
+    }
+}
+
+@media (max-width: 380px) {
+    .oyun-alani {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+</style>
+</head>
+
+<body>
+
+<h1>🧠 Kart Bulma Oyunu</h1>
+<p class="aciklama">
+    Aynı resimli kartları bul ve 30 çifti tamamla!
+</p>
+
+<div class="istatistikler">
+    <div class="kutu">
+        Hamle
+        <strong id="hamle">0</strong>
+    </div>
+
+    <div class="kutu">
+        Bulunan Çift
+        <strong id="cift">0 / 30</strong>
+    </div>
+
+    <div class="kutu">
+        Süre
+        <strong id="sure">00:00</strong>
+    </div>
+</div>
+
+<button class="yenile" onclick="oyunuBaslat()">
+    🔄 Yeni Oyun
+</button>
+
+<div class="oyun-alani" id="oyunAlani"></div>
+
+<div id="mesaj">Başlamak için iki kart seç!</div>
+
+<script>
+const semboller = [
+    "🐶", "🐱", "🦊", "🐼", "🐸",
+    "🦁", "🐵", "🐰", "🐻", "🐯",
+    "🦄", "🐨", "🐷", "🐮", "🐙",
+    "🦋", "🐢", "🐬", "🦉", "🦜",
+    "🍎", "🍓", "🍉", "🍍", "🍒",
+    "🍕", "🍔", "🍩", "🍦", "🎈"
+];
+
+let ilkKart = null;
+let ikinciKart = null;
+let kilitli = false;
+let hamleSayisi = 0;
+let bulunanCift = 0;
+let saniye = 0;
+let zamanlayici = null;
+let basladi = false;
+let oyunNo = 0;
+
+function karistir(dizi) {
+    for (let i = dizi.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [dizi[i], dizi[j]] = [dizi[j], dizi[i]];
+    }
+    return dizi;
+}
+
+function sureyiGuncelle() {
+    const dakika = Math.floor(saniye / 60);
+    const saniyeKalan = saniye % 60;
+
+    document.getElementById("sure").textContent =
+        String(dakika).padStart(2, "0") + ":" +
+        String(saniyeKalan).padStart(2, "0");
+}
+
+function oyunuBaslat() {
+    oyunNo++;
+
+    clearInterval(zamanlayici);
+
+    ilkKart = null;
+    ikinciKart = null;
+    kilitli = false;
+    hamleSayisi = 0;
+    bulunanCift = 0;
+    saniye = 0;
+    basladi = false;
+
+    document.getElementById("hamle").textContent = "0";
+    document.getElementById("cift").textContent = "0 / 30";
+    document.getElementById("mesaj").textContent =
+        "Başlamak için iki kart seç!";
+
+    sureyiGuncelle();
+
+    const kartlar = karistir(
+        [...semboller, ...semboller]
+    );
+
+    const alan = document.getElementById("oyunAlani");
+    alan.innerHTML = "";
+
+    kartlar.forEach((sembol, index) => {
+        const kart = document.createElement("button");
+
+        kart.className = "kart";
+        kart.textContent = "❓";
+        kart.dataset.sembol = sembol;
+        kart.dataset.index = index;
+        kart.setAttribute("aria-label", "Kapalı kart");
+
+        kart.addEventListener("click", () => kartiAc(kart));
+
+        alan.appendChild(kart);
+    });
+}
+
+function kartiAc(kart) {
+    if (kilitli || kart.classList.contains("acik") ||
+        kart.classList.contains("eslesti")) {
+        return;
+    }
+
+    if (!basladi) {
+        basladi = true;
+
+        const buOyun = oyunNo;
+
+        zamanlayici = setInterval(() => {
+            if (buOyun !== oyunNo) return;
+
+            saniye++;
+            sureyiGuncelle();
+        }, 1000);
+    }
+
+    kart.textContent = kart.dataset.sembol;
+    kart.classList.add("acik");
+    kart.setAttribute("aria-label", kart.dataset.sembol);
+
+    if (ilkKart === null) {
+        ilkKart = kart;
+        return;
+    }
+
+    ikinciKart = kart;
+    hamleSayisi++;
+
+    document.getElementById("hamle").textContent = hamleSayisi;
+
+    if (ilkKart.dataset.sembol === ikinciKart.dataset.sembol) {
+        ilkKart.classList.remove("acik");
+        ikinciKart.classList.remove("acik");
+
+        ilkKart.classList.add("eslesti");
+        ikinciKart.classList.add("eslesti");
+
+        ilkKart.disabled = true;
+        ikinciKart.disabled = true;
+
+        bulunanCift++;
+        document.getElementById("cift").textContent =
+            bulunanCift + " / 30";
+
+        ilkKart = null;
+        ikinciKart = null;
+
+        if (bulunanCift === 30) {
+            clearInterval(zamanlayici);
+
+            document.getElementById("mesaj").textContent =
+                "🎉 Tebrikler! Bütün kartları buldun!";
+
+        } else {
+            document.getElementById("mesaj").textContent =
+                "✅ Harika! Bir çift buldun.";
+        }
+
+    } else {
+        kilitli = true;
+
+        document.getElementById("mesaj").textContent =
+            "❌ Eşleşmedi! Tekrar dene.";
+
+        const buOyun = oyunNo;
+
+        setTimeout(() => {
+            if (buOyun !== oyunNo) return;
+
+            ilkKart.textContent = "❓";
+            ikinciKart.textContent = "❓";
+
+            ilkKart.classList.remove("acik");
+            ikinciKart.classList.remove("acik");
+
+            ilkKart.setAttribute("aria-label", "Kapalı kart");
+            ikinciKart.setAttribute("aria-label", "Kapalı kart");
+
+            ilkKart = null;
+            ikinciKart = null;
+            kilitli = false;
+
+            document.getElementById("mesaj").textContent =
+                "Yeni iki kart seç!";
+        }, 900);
+    }
+}
+
+oyunuBaslat();
+</script>
+
+</body>
+</html>
